@@ -1,4 +1,4 @@
-[README.md](https://github.com/user-attachments/files/24154476/README.md)
+[README_FIXED_LINKS.md](https://github.com/user-attachments/files/24154925/README_FIXED_LINKS.md)
 # Memory Manager 📸
 
 Download and organize all your Snapchat memories automatically!
@@ -46,8 +46,8 @@ Memory Manager is a desktop application that helps you download and organize **a
 
 **Complete installation guides available:**
 
-- 📘 [**Windows Guide**](docs/Memory_Manager_Windows_Guide.docx)
-- 📗 [**Mac Guide**](docs/Memory_Manager_Mac_Guide.docx)
+- 📘 [**Windows Guide**](../../raw/main/docs/Memory_Manager_Windows_Guide.docx) ⬇️ Download
+- 📗 [**Mac Guide**](../../raw/main/docs/Memory_Manager_Mac_Guide.docx) ⬇️ Download
 
 ### Quick Start
 
