@@ -23,7 +23,7 @@ import sys
 import subprocess
 import os
 
-# Silent package check
+# Package check and auto-install
 def install_package(package):
     try:
         subprocess.check_call([sys.executable, "-m", "pip", "install", package], 
@@ -32,7 +32,7 @@ def install_package(package):
     except:
         return False
 
-required_packages = {'requests': 'requests', 'beautifulsoup4': 'bs4', 'Pillow': 'PIL', 'opencv-python': 'cv2', 'numpy': 'numpy'}
+required_packages = {'requests': 'requests', 'beautifulsoup4': 'bs4', 'Pillow': 'PIL', 'opencv-python-headless': 'cv2', 'numpy': 'numpy'}
 missing_packages = []
 for p, i in required_packages.items():
     try:
@@ -63,6 +63,8 @@ from PIL import Image
 import cv2, numpy as np
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
+import time
 
 def merge_overlay_with_video(video_path, overlay_path, output_path):
     try:
@@ -96,6 +98,29 @@ def merge_overlay_with_image(image_path, overlay_path, output_path):
         else: combined.convert('RGB').save(output_path, 'JPEG', quality=95)
         return True
     except: return False
+
+def convert_utc_to_local(date_string):
+    """Convert UTC timestamp from Snapchat to local timezone"""
+    try:
+        # Remove ' UTC' suffix if present
+        date_string = date_string.replace(' UTC', '').strip()
+        
+        # Parse the UTC datetime
+        utc_dt = datetime.strptime(date_string, '%Y-%m-%d %H:%M:%S')
+        
+        # Convert UTC to timestamp (treating it as UTC, not local)
+        # Use calendar.timegm instead of time.mktime to treat input as UTC
+        import calendar
+        utc_timestamp = calendar.timegm(utc_dt.timetuple())
+        
+        # Convert timestamp to local time
+        local_dt = datetime.fromtimestamp(utc_timestamp)
+        
+        # Format as YYYY-MM-DD_HH-MM-SS
+        return local_dt.strftime('%Y-%m-%d_%H-%M-%S')
+    except:
+        # If conversion fails, fall back to original method
+        return date_string.replace(' UTC', '').replace(' ', '_').replace(':', '-')
 
 
 class SnapDownloader:
@@ -1374,23 +1399,7 @@ class SnapDownloader:
         tk.Label(inner, text="📁", font=("Segoe UI", 50), bg="#FFF8F0").pack()
         tk.Label(inner, text="Select Your Snap Data", font=("Segoe UI", 18, "bold"), bg="#FFF8F0", fg=self.dark).pack(pady=(15, 8))
         tk.Label(inner, text="Choose your 'mydata' folder from Snap export", font=("Segoe UI", 10), bg="#FFF8F0", fg=self.light).pack(pady=(0, 20))
-        
-        # Create custom orange button using Canvas (Mac-compatible)
-        btn_canvas = tk.Canvas(inner, width=230, height=48, bg="#FFF8F0", highlightthickness=0)
-        btn_canvas.pack()
-        
-        # Draw orange rounded rectangle button
-        btn_canvas.create_rectangle(5, 5, 225, 43, fill="#FF6B35", outline="#FF6B35", width=0)
-        
-        # Add button text
-        btn_canvas.create_text(115, 24, text="🗂️  Browse Folder", 
-                              font=("Segoe UI", 12, "bold"), 
-                              fill="white")
-        
-        # Make it clickable with proper cursor
-        btn_canvas.bind("<Button-1>", lambda e: self.select_file())
-        btn_canvas.bind("<Enter>", lambda e: btn_canvas.config(cursor="pointinghand"))
-        btn_canvas.bind("<Leave>", lambda e: btn_canvas.config(cursor=""))
+        tk.Button(inner, text="🗂️  Browse Folder", font=("Segoe UI", 12, "bold"), bg=self.orange, fg="white", relief=tk.FLAT, padx=35, pady=12, cursor="hand2", command=self.select_file).pack()
         
         # Info cards
         info_frame = tk.Frame(self.content_area, bg=self.white)
@@ -1437,27 +1446,7 @@ class SnapDownloader:
             tk.Label(inner, text=str(value), font=("Segoe UI", 32, "bold"), bg=self.white, fg=color).pack()
             tk.Label(inner, text=label, font=("Segoe UI", 10), bg=self.white, fg=self.light).pack()
         
-        # Custom Canvas-based download button (green, Mac-compatible)
-        download_btn_canvas = tk.Canvas(self.content_area, height=60, bg=self.white, highlightthickness=0)
-        download_btn_canvas.pack(fill=tk.X, pady=(0, 12))
-        
-        # Calculate center for button
-        download_btn_canvas.update_idletasks()
-        canvas_width = download_btn_canvas.winfo_width() if download_btn_canvas.winfo_width() > 1 else 1000
-        
-        # Draw green rounded rectangle button (full width)
-        btn_rect = download_btn_canvas.create_rectangle(40, 10, canvas_width-40, 50, fill="#06D6A0", outline="#06D6A0", width=0)
-        
-        # Add button text
-        btn_text = download_btn_canvas.create_text(canvas_width//2, 30, text="⬇️  Start Download", 
-                              font=("Segoe UI", 14, "bold"), 
-                              fill="white")
-        
-        # Make it clickable with proper cursor
-        download_btn_canvas.bind("<Button-1>", lambda e: self.start_download())
-        download_btn_canvas.bind("<Enter>", lambda e: download_btn_canvas.config(cursor="pointinghand"))
-        download_btn_canvas.bind("<Leave>", lambda e: download_btn_canvas.config(cursor=""))
-        
+        tk.Button(self.content_area, text="⬇️  Start Download", font=("Segoe UI", 14, "bold"), bg=self.green, fg="white", relief=tk.FLAT, pady=16, cursor="hand2", command=self.start_download).pack(fill=tk.X, pady=(0, 12))
         tk.Label(self.content_area, text="Files will be downloaded with overlays merged automatically", font=("Segoe UI", 9), bg=self.white, fg=self.light).pack()
     
     def show_downloading_screen(self):
@@ -1482,18 +1471,8 @@ class SnapDownloader:
         self.status_sub = tk.Label(text_frame, text="0 of 0 completed", font=("Segoe UI", 10), bg=self.white, fg=self.light)
         self.status_sub.pack(anchor='w')
         
-        # Custom Canvas-based Pause button (orange, Mac-compatible)
-        self.pause_btn_canvas = tk.Canvas(header, width=120, height=36, bg=self.white, highlightthickness=0)
-        self.pause_btn_canvas.pack(side=tk.RIGHT)
-        
-        # Draw orange button
-        self.pause_btn_rect = self.pause_btn_canvas.create_rectangle(5, 5, 115, 31, fill="#FF6B35", outline="#FF6B35", width=0)
-        self.pause_btn_text = self.pause_btn_canvas.create_text(60, 18, text="⏸️  Pause", 
-                              font=("Segoe UI", 10, "bold"), fill="white")
-        
-        self.pause_btn_canvas.bind("<Button-1>", lambda e: self.toggle_pause())
-        self.pause_btn_canvas.bind("<Enter>", lambda e: self.pause_btn_canvas.config(cursor="pointinghand"))
-        self.pause_btn_canvas.bind("<Leave>", lambda e: self.pause_btn_canvas.config(cursor=""))
+        self.pause_btn = tk.Button(header, text="⏸️  Pause", font=("Segoe UI", 10, "bold"), bg=self.orange, fg="white", relief=tk.FLAT, padx=22, pady=9, cursor="hand2", command=self.toggle_pause)
+        self.pause_btn.pack(side=tk.RIGHT)
         
         # Progress
         progress_frame = tk.Frame(self.content_area, bg=self.white)
@@ -1548,37 +1527,9 @@ class SnapDownloader:
         tk.Label(self.content_area, text=f"📁 Files saved to: {self.output_dir}", font=("Segoe UI", 9), bg=self.white, fg=self.light, wraplength=700).pack(pady=(0, 20))
         
         if self.stats['failed'] > 0 and self.failed_memories:
-            # Custom Canvas-based Retry button (red, Mac-compatible)
-            retry_btn_canvas = tk.Canvas(self.content_area, height=50, bg=self.white, highlightthickness=0)
-            retry_btn_canvas.pack(fill=tk.X, pady=(0, 10))
-            
-            retry_btn_canvas.update_idletasks()
-            canvas_width = retry_btn_canvas.winfo_width() if retry_btn_canvas.winfo_width() > 1 else 1000
-            
-            # Draw red button
-            retry_btn_canvas.create_rectangle(40, 5, canvas_width-40, 45, fill="#F56565", outline="#F56565", width=0)
-            retry_btn_canvas.create_text(canvas_width//2, 25, text=f"🔄  Retry {len(self.failed_memories)} Failed", 
-                                  font=("Segoe UI", 12, "bold"), fill="white")
-            
-            retry_btn_canvas.bind("<Button-1>", lambda e: self.retry_failed())
-            retry_btn_canvas.bind("<Enter>", lambda e: retry_btn_canvas.config(cursor="pointinghand"))
-            retry_btn_canvas.bind("<Leave>", lambda e: retry_btn_canvas.config(cursor=""))
+            tk.Button(self.content_area, text=f"🔄  Retry {len(self.failed_memories)} Failed", font=("Segoe UI", 12, "bold"), bg="#F56565", fg="white", relief=tk.FLAT, pady=13, cursor="hand2", command=self.retry_failed).pack(fill=tk.X, pady=(0, 10))
         
-        # Custom Canvas-based Done button (grey, Mac-compatible)
-        done_btn_canvas = tk.Canvas(self.content_area, height=50, bg=self.white, highlightthickness=0)
-        done_btn_canvas.pack(fill=tk.X)
-        
-        done_btn_canvas.update_idletasks()
-        canvas_width = done_btn_canvas.winfo_width() if done_btn_canvas.winfo_width() > 1 else 1000
-        
-        # Draw grey button
-        done_btn_canvas.create_rectangle(40, 5, canvas_width-40, 45, fill="#718096", outline="#718096", width=0)
-        done_btn_canvas.create_text(canvas_width//2, 25, text="✓  Done", 
-                              font=("Segoe UI", 12, "bold"), fill="white")
-        
-        done_btn_canvas.bind("<Button-1>", lambda e: self.reset())
-        done_btn_canvas.bind("<Enter>", lambda e: done_btn_canvas.config(cursor="pointinghand"))
-        done_btn_canvas.bind("<Leave>", lambda e: done_btn_canvas.config(cursor=""))
+        tk.Button(self.content_area, text="✓  Done", font=("Segoe UI", 12, "bold"), bg=self.light, fg="white", relief=tk.FLAT, pady=13, cursor="hand2", command=self.reset).pack(fill=tk.X)
         
         # Subtle donation link
         donation_frame = tk.Frame(self.content_area, bg=self.white)
@@ -1587,7 +1538,7 @@ class SnapDownloader:
         donation_label = tk.Label(donation_frame, text="Enjoyed this tool? ", font=("Segoe UI", 8), bg=self.white, fg=self.light)
         donation_label.pack(side=tk.LEFT)
         
-        donation_link = tk.Label(donation_frame, text="Buy me a coffee ☕", font=("Segoe UI", 8), bg=self.white, fg="#FF6B35", cursor="pointinghand")
+        donation_link = tk.Label(donation_frame, text="Buy me a coffee ☕", font=("Segoe UI", 8), bg=self.white, fg="#FF6B35", cursor="hand2")
         donation_link.pack(side=tk.LEFT)
         donation_link.bind("<Button-1>", lambda e: self.open_donation_link())
         
@@ -1662,7 +1613,8 @@ class SnapDownloader:
             
             try:
                 content = requests.get(url, timeout=60).content
-                safe_date = date.replace(' UTC', '').replace(' ', '_').replace(':', '-')
+                # Convert UTC date to local timezone
+                safe_date = convert_utc_to_local(date)
                 is_zip = content[:2] == b'PK'
                 
                 if is_zip:
@@ -1718,8 +1670,7 @@ class SnapDownloader:
         self.paused = not self.paused
         self.status_icon.config(text="⏸️" if self.paused else "⬇️")
         self.status_title.config(text="Paused" if self.paused else "Downloading Memories")
-        # Update Canvas button text
-        self.pause_btn_canvas.itemconfig(self.pause_btn_text, text="▶️  Resume" if self.paused else "⏸️  Pause")
+        self.pause_btn.config(text="▶️  Resume" if self.paused else "⏸️  Pause")
     
     def retry_failed(self):
         if not self.failed_memories: return

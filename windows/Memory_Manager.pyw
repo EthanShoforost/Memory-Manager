@@ -63,6 +63,8 @@ from PIL import Image
 import cv2, numpy as np
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
+import time
 
 def merge_overlay_with_video(video_path, overlay_path, output_path):
     try:
@@ -96,6 +98,29 @@ def merge_overlay_with_image(image_path, overlay_path, output_path):
         else: combined.convert('RGB').save(output_path, 'JPEG', quality=95)
         return True
     except: return False
+
+def convert_utc_to_local(date_string):
+    """Convert UTC timestamp from Snapchat to local timezone"""
+    try:
+        # Remove ' UTC' suffix if present
+        date_string = date_string.replace(' UTC', '').strip()
+        
+        # Parse the UTC datetime
+        utc_dt = datetime.strptime(date_string, '%Y-%m-%d %H:%M:%S')
+        
+        # Convert UTC to timestamp (treating it as UTC, not local)
+        # Use calendar.timegm instead of time.mktime to treat input as UTC
+        import calendar
+        utc_timestamp = calendar.timegm(utc_dt.timetuple())
+        
+        # Convert timestamp to local time
+        local_dt = datetime.fromtimestamp(utc_timestamp)
+        
+        # Format as YYYY-MM-DD_HH-MM-SS
+        return local_dt.strftime('%Y-%m-%d_%H-%M-%S')
+    except:
+        # If conversion fails, fall back to original method
+        return date_string.replace(' UTC', '').replace(' ', '_').replace(':', '-')
 
 
 class SnapDownloader:
@@ -1588,7 +1613,8 @@ class SnapDownloader:
             
             try:
                 content = requests.get(url, timeout=60).content
-                safe_date = date.replace(' UTC', '').replace(' ', '_').replace(':', '-')
+                # Convert UTC date to local timezone
+                safe_date = convert_utc_to_local(date)
                 is_zip = content[:2] == b'PK'
                 
                 if is_zip:
