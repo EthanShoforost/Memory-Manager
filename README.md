@@ -1,4 +1,3 @@
-[memory_manager_v1.1.0_README.md](https://github.com/user-attachments/files/24351656/memory_manager_v1.1.0_README.md)
 # Memory Manager 📸
 
 **Automatically download and organize all your Snapchat memories from your data export.**
@@ -110,7 +109,7 @@ Your downloaded photos and videos now have the **correct dates in their metadata
 
 **Upgrading from v1.0.x?** Your old files don't have metadata. Either:
 - Re-download with v1.1.0 (metadata added automatically)
-- Use the [Snapchat Metadata Fixer](https://github.com/ethanshoforost/snapchat-metadata-fixer) to fix existing files
+- Use the [Snapchat Metadata Fixer](https://github.com/EthanShoforost/Snapchat-Memory-Metadata-Fixer) to fix existing files
 
 ---
 
@@ -135,18 +134,18 @@ Your downloaded photos and videos now have the **correct dates in their metadata
 **Windows:**
 1. Open **Command Prompt**
 2. Copy and paste this command:
-   ```
+```
    python -m pip install requests beautifulsoup4 Pillow opencv-python numpy piexif
-   ```
+```
 3. Press Enter and wait for installation to complete
 4. Run Memory Manager
 
 **Mac:**
 1. Open **Terminal**
 2. Copy and paste this command:
-   ```
+```
    pip3 install requests beautifulsoup4 Pillow opencv-python numpy piexif
-   ```
+```
 3. Press Enter and wait for installation to complete
 4. Run Memory Manager
 
@@ -183,7 +182,7 @@ Check the complete installation guides:
 
 ## 🔗 Related Tools
 
-**NEW:** [**Snapchat Metadata Fixer**](https://github.com/ethanshoforost/snapchat-metadata-fixer) - Standalone tool to fix metadata on existing files
+**NEW:** [**Snapchat Metadata Fixer**](https://github.com/EthanShoforost/Snapchat-Memory-Metadata-Fixer) - Standalone tool to fix metadata on existing files
 - Fix files downloaded with Memory Manager v1.0.x
 - Full video metadata support with FFmpeg
 - Batch process entire folders
