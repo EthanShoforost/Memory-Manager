@@ -1,9 +1,8 @@
-
 #!/usr/bin/env python3
 """
 Memory Manager - Snapchat Memories Downloader
 Created by: Ethan Shoforost
-Version: 1.1.0
+Version: 1.1.3
 GitHub: https://github.com/ethanshoforost/memory-manager
 Support: https://buymeacoffee.com/ethanshoforost
 
@@ -33,7 +32,7 @@ def install_package(package):
     except:
         return False
 
-required_packages = {'requests': 'requests', 'beautifulsoup4': 'bs4', 'Pillow': 'PIL', 'opencv-python': 'cv2', 'numpy': 'numpy', 'piexif': 'piexif'}
+required_packages = {'requests': 'requests', 'beautifulsoup4': 'bs4', 'Pillow': 'PIL', 'opencv-python': 'cv2', 'numpy': 'numpy', 'piexif': 'piexif', 'imageio-ffmpeg': 'imageio_ffmpeg'}
 missing_packages = []
 for p, i in required_packages.items():
     try:
@@ -70,6 +69,15 @@ import piexif
 
 def merge_overlay_with_video(video_path, overlay_path, output_path):
     try:
+        import imageio_ffmpeg
+        import tempfile
+        
+        # Get FFmpeg path from imageio-ffmpeg (auto-bundled)
+        ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+        
+        # Step 1: Create temporary video with overlay using OpenCV
+        temp_video = tempfile.mktemp(suffix='.mp4')
+        
         cap = cv2.VideoCapture(video_path)
         fps, w, h = int(cap.get(cv2.CAP_PROP_FPS)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         overlay = cv2.imread(overlay_path, cv2.IMREAD_UNCHANGED)
@@ -78,16 +86,86 @@ def merge_overlay_with_video(video_path, overlay_path, output_path):
         has_alpha = overlay.shape[2] == 4 if len(overlay.shape) == 3 else False
         overlay_bgr = overlay[:,:,:3] if has_alpha else overlay
         overlay_alpha = overlay[:,:,3:]/255.0 if has_alpha else np.ones((h,w,1))
-        out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+        
+        # Use better codec for temp video
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(temp_video, fourcc, fps, (w, h))
         if not out.isOpened(): cap.release(); return False
+        
         while True:
             ret, frame = cap.read()
             if not ret: break
             if has_alpha: frame = (frame.astype(float)*(1-overlay_alpha) + overlay_bgr*overlay_alpha).astype(np.uint8)
             out.write(frame)
-        cap.release(); out.release()
-        return True
-    except: return False
+        cap.release()
+        out.release()
+        
+        # Step 2: Use FFmpeg to combine temp video with original audio
+        cmd = [
+            ffmpeg_path,
+            '-i', temp_video,  # Video with overlay (no audio)
+            '-i', video_path,  # Original video (with audio)
+            '-c:v', 'copy',  # Copy video stream
+            '-c:a', 'copy',  # Copy audio stream
+            '-map', '0:v:0',  # Take video from first input
+            '-map', '1:a:0?',  # Take audio from second input (? = optional)
+            '-shortest',  # Match shortest stream
+            '-y',  # Overwrite
+            output_path
+        ]
+        
+        # Run FFmpeg silently
+        startupinfo = None
+        if sys.platform == 'win32':
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = subprocess.SW_HIDE
+        
+        result = subprocess.run(cmd, capture_output=True, timeout=120, startupinfo=startupinfo)
+        
+        # Clean up temp file
+        try:
+            os.remove(temp_video)
+        except:
+            pass
+        
+        # Check if successful
+        if result.returncode == 0 and os.path.exists(output_path):
+            return True
+        else:
+            # If failed, use temp video without audio as fallback
+            try:
+                if os.path.exists(temp_video):
+                    shutil.copy(temp_video, output_path)
+                    os.remove(temp_video)
+                    return True
+            except:
+                pass
+            return False
+            
+    except Exception as e:
+        print(f"Error in merge_overlay_with_video: {e}")
+        # Ultimate fallback - old method without audio
+        try:
+            cap = cv2.VideoCapture(video_path)
+            fps, w, h = int(cap.get(cv2.CAP_PROP_FPS)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            overlay = cv2.imread(overlay_path, cv2.IMREAD_UNCHANGED)
+            if overlay is None: return False
+            if overlay.shape[1] != w or overlay.shape[0] != h: overlay = cv2.resize(overlay, (w, h))
+            has_alpha = overlay.shape[2] == 4 if len(overlay.shape) == 3 else False
+            overlay_bgr = overlay[:,:,:3] if has_alpha else overlay
+            overlay_alpha = overlay[:,:,3:]/255.0 if has_alpha else np.ones((h,w,1))
+            out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+            if not out.isOpened(): cap.release(); return False
+            while True:
+                ret, frame = cap.read()
+                if not ret: break
+                if has_alpha: frame = (frame.astype(float)*(1-overlay_alpha) + overlay_bgr*overlay_alpha).astype(np.uint8)
+                out.write(frame)
+            cap.release(); out.release()
+            return True
+        except: 
+            return False
 
 def merge_overlay_with_image(image_path, overlay_path, output_path):
     try:
